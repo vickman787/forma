@@ -305,8 +305,8 @@ export async function paymentInfo(o: Order) {
       reason: "Live checkout awaits deployment and settlement verification.",
     };
   if (!settlementOnly && !localValidation) {
-    const operational=await checkoutReadiness();
-    if(!operational.enabled) return {mode:"live",...operational,terms};
+    const operational = await checkoutReadiness();
+    if (!operational.enabled) return { mode: "live", ...operational, terms };
   }
   const { rpc, escrow } = await verifiedConfig();
   const job = await rpc.readContract({
@@ -321,14 +321,25 @@ export async function paymentInfo(o: Order) {
       [o.quote_id],
     );
   assert(q?.wallet, 409, "Matching customer quote not found");
-  if (job[7] === 0)
+  if (job[7] === 0) {
+    const [task] = await db.query(
+      "SELECT status FROM operator_tasks WHERE order_id=$1 AND action='create'",
+      [o.id],
+    );
+    const expired = Date.parse(o.funding_expires) <= Date.now();
+    const blocked = task?.status === "blocked";
     return {
       mode: "live",
       enabled: false,
-      registrationPending: true,
-      reason: "Registering your quote on QIE. This page checks automatically.",
+      registrationPending: !expired && !blocked,
+      reason: expired
+        ? "This quote has expired. Request a fresh quote. Your wallet has not been charged."
+        : blocked
+          ? "Quote registration is temporarily blocked. Your wallet has not been charged. Contact support with your project ID."
+          : "Registering your quote on QIE. This page checks automatically.",
       terms,
     };
+  }
   assert(
     job[0].toLowerCase() === q.wallet.toLowerCase() &&
       job[1] === 1000000n &&

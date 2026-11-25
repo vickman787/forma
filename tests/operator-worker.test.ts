@@ -70,6 +70,7 @@ test("automatic operator respects expiry, exact scope and aggregate gas limits b
   const command = async (_file: string, args: string[]) => {
     if (args.includes("scripts/operator-preflight.ts")) {
       prepared++;
+      if (prepared === 1) throw new Error("Temporary read-only RPC outage");
       const id = args[3];
       return {
         stdout: JSON.stringify({
@@ -103,6 +104,12 @@ test("automatic operator respects expiry, exact scope and aggregate gas limits b
   assert.equal(signed, 0);
   delete process.env.OPERATOR_POLICY_ORDER_ID;
   assert.equal(await runOperatorOne(command as any), true);
+  assert.equal(prepared, 2, "unsigned preparation retries before any signing");
+  assert.equal(
+    signed,
+    1,
+    "signing is executed only once after preparation recovers",
+  );
   assert.equal(await runOperatorOne(command as any), true);
   await runOperatorOne(command as any);
   assert.equal(
@@ -168,6 +175,26 @@ test("automatic operator respects expiry, exact scope and aggregate gas limits b
   } finally {
     process.env.FORMA_TEST_FIXTURES = "true";
   }
+  const failedQuote = await quote(owner, brief);
+  const failedOrder = await createOrder(owner, failedQuote.id);
+  let attempts = 0;
+  await runOperatorOne((async (_file: string, args: string[]) => {
+    assert.ok(
+      args.includes("scripts/operator-preflight.ts"),
+      "failed preparation must never invoke signing",
+    );
+    attempts++;
+    throw new Error("RPC unavailable");
+  }) as any);
+  assert.equal(attempts, 3, "read-only retries are bounded");
+  const [failedTask] = await db.query(
+    "SELECT status,error,tx_hash,signed_tx FROM operator_tasks WHERE order_id=$1 AND action='create'",
+    [failedOrder.id],
+  );
+  assert.equal(failedTask.status, "blocked");
+  assert.match(failedTask.error, /No signing command was started/);
+  assert.equal(failedTask.tx_hash, null);
+  assert.equal(failedTask.signed_tx, null);
   process.env.OPERATOR_POLICY_EXPIRES_AT = new Date(
     Date.now() - 1,
   ).toISOString();

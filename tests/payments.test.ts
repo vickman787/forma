@@ -388,6 +388,19 @@ test("live receipt reconciliation with isolated database and mocked RPC only", a
       process.env.ALLOW_PAID_API_CALLS = "true";
       state = 0;
       assert.equal((await paymentInfo(order)).enabled, false);
+      await db.query(
+        "INSERT INTO operator_tasks(id,order_id,action,status,error,created_at,updated_at) VALUES($1,$2,'create','blocked','Preparation unavailable',$3,$3)",
+        [randomUUID(), order.id, new Date().toISOString()],
+      );
+      const blocked = await paymentInfo(order);
+      assert.equal(blocked.registrationPending, false);
+      assert.match(blocked.reason!, /temporarily blocked/);
+      const expired = await paymentInfo({
+        ...order,
+        funding_expires: new Date(Date.now() - 1000).toISOString(),
+      });
+      assert.equal(expired.registrationPending, false);
+      assert.match(expired.reason!, /expired/);
       state = 1;
       const first = txHash();
       await recordPendingPayment(order, first);

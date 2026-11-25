@@ -172,24 +172,39 @@ export async function runOperatorOne(execute: typeof exec = exec) {
     throw new Error(
       "Reserved task belongs to a different approval policy; review it first.",
     );
+  let stage = "preparation";
   try {
-    const prepared = await execute(
-      process.execPath,
-      [
-        "--import",
-        "tsx",
-        "scripts/operator-preflight.ts",
-        task.order_id,
-        task.action,
-        `${policy.id}-${task.id}`,
-      ],
-      {
-        cwd: process.cwd(),
-        windowsHide: true,
-        timeout: 90000,
-        maxBuffer: 32768,
-      },
-    );
+    // Preparation is read-only and may safely retry transient RPC failures.
+    // Never retry the signing/execution command: its outcome may be ambiguous.
+    const prepare = () =>
+      execute(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          "scripts/operator-preflight.ts",
+          task.order_id,
+          task.action,
+          `${policy.id}-${task.id}`,
+        ],
+        {
+          cwd: process.cwd(),
+          windowsHide: true,
+          timeout: 90000,
+          maxBuffer: 32768,
+        },
+      );
+    let prepared;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        prepared = await prepare();
+        break;
+      } catch (error) {
+        if (attempt === 2) throw error;
+      }
+    }
+    if (!prepared) throw new Error("Unsigned preparation unavailable");
+    stage = "validation";
     const plan = JSON.parse(prepared.stdout);
     if (
       !plan.unsigned ||
@@ -210,6 +225,7 @@ export async function runOperatorOne(execute: typeof exec = exec) {
       throw new Error("Current fee exceeds the existing task reservation");
     // Recheck expiry/approval immediately before invoking the narrowly scoped executor.
     operatorPolicy();
+    stage = "execution";
     const result = await execute(
       process.execPath,
       [
@@ -241,7 +257,11 @@ export async function runOperatorOne(execute: typeof exec = exec) {
       await db.query(
         "UPDATE operator_tasks SET status='blocked',error=$1,updated_at=$2 WHERE id=$3",
         [
-          "Operator preparation or execution needs review. No automatic retry or replacement signing.",
+          stage === "preparation"
+            ? "Unsigned preparation failed after three read-only attempts. No signing command was started."
+            : stage === "validation"
+              ? "Unsigned preparation did not pass the approved fee, capacity or plan checks. No signing command was started."
+              : "Operator execution needs review. No automatic retry or replacement signing.",
           new Date().toISOString(),
           task.id,
         ],
