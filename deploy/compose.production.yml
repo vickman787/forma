@@ -5,6 +5,7 @@ x-app: &app
     context: ..
     dockerfile: deploy/Dockerfile
   restart: unless-stopped
+  init: true
   env_file:
     - ${FORMA_ENV_DIR:-../.forma/deploy}/shared.env
   volumes:
