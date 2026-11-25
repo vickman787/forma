@@ -1,0 +1,59 @@
+{
+  "name": "forma-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx scripts/local-service.ts web --dev",
+    "build": "next build",
+    "start": "tsx scripts/local-service.ts web",
+    "local:test": "npm run build && npm run local:stack",
+    "local:stack": "tsx scripts/local-stack.ts",
+    "preview": "tsx scripts/local-service.ts preview",
+    "worker": "tsx scripts/local-service.ts generation",
+    "operator:worker": "tsx scripts/local-service.ts operator",
+    "chain:worker": "tsx scripts/local-service.ts chain",
+    "test": "tsx --import ./tests/setup.mjs --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "test:contracts": "tsx --test tests/escrow.test.ts",
+    "contract:build": "tsx --env-file-if-exists=.env scripts/contract-build.ts",
+    "contract:preflight": "tsx --env-file-if-exists=.env scripts/contract-preflight.ts",
+    "operator:plan": "tsx --env-file-if-exists=.env scripts/operator-plan.ts",
+    "operator:reconcile": "tsx --env-file-if-exists=.env scripts/operator-reconcile.ts",
+    "test:http": "tsx scripts/http-smoke.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
+    "openai:check": "tsx --env-file-if-exists=.env scripts/openai-check.ts"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "archiver": "8.0.0",
+    "ffmpeg-static": "^5.2.0",
+    "lucide-react": "^0.468.0",
+    "next": "^16.0.0",
+    "pdfkit": "^0.17.2",
+    "pg": "^8.16.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "0.35.5",
+    "tsx": "^4.20.0",
+    "viem": "^2.38.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/archiver": "8.0.0",
+    "@types/node": "^24.0.0",
+    "@types/pdfkit": "^0.17.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "ganache": "^7.9.2",
+    "prettier": "^3.10.1",
+    "solc": "^0.8.30",
+    "typescript": "^5.9.0"
+  },
+  "overrides": {
+    "archiver": {
+      "readdir-glob": "4.0.0"
+    }
+  }
+}

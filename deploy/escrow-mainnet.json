@@ -1,0 +1,11 @@
+{
+  "status": "confirmed_checked",
+  "chainId": 1990,
+  "contractAddress": "0xbf0bd3c5231872006ecbf3557e7aa730ec797032",
+  "runtimeCodeHash": "0x7edc97a57d32a87eab9d0e0298ab9883dfdeb7f7095ec0744777194dc35ee05b",
+  "blockNumber": "12142771",
+  "asset": "0x3F43DA82eC9A4f5285F10FaF1F26EcA7319E5DA5",
+  "treasury": "0xC137afa61B212D1492ad70B34b614aD7Aab9A873",
+  "operator": "0xC137afa61B212D1492ad70B34b614aD7Aab9A873",
+  "hash": "0x5e69423462806fa2051372fdf188c87c8b85a656b7a8f6cf6145283a115a417e"
+}
