@@ -14,6 +14,7 @@ import {
 } from "@/lib/operator";
 import { availability } from "@/lib/capabilities";
 import { checkoutReadiness } from "@/lib/health";
+import { readWalletBalance } from "@/lib/wallet-balance";
 import { previewUrl } from "@/lib/preview";
 import { database } from "@/lib/db";
 import { services, terms, brandKitSchema } from "@/lib/domain";
@@ -191,6 +192,14 @@ async function handler(
       owner = session.owner,
       db = await database();
     if (method !== "GET") await rateLimit(`${owner}:${parts[0]}`, 40);
+    if (route === "wallet/balance" && method === "GET") {
+      await rateLimit(`${owner}:wallet-balance`, 20);
+      try {
+        return json(await readWalletBalance(session.wallet as `0x${string}`));
+      } catch {
+        throw new HttpError(503, "Wallet balance is temporarily unavailable");
+      }
+    }
     if (route === "brand-kit") {
       if (method === "GET") {
         const [r] = await db.query("SELECT * FROM brand_kits WHERE owner=$1", [

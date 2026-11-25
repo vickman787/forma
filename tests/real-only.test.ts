@@ -44,12 +44,13 @@ test("wallet authentication works and removed synthetic endpoints cannot create 
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return (body === undefined ? GET : POST)(req, {
-      params: Promise.resolve({ path: route.split("/") }),
+      params: Promise.resolve({ path: route.split("?")[0].split("/") }),
     });
   }
   const removed = await call("auth/demo", {});
   assert.equal(removed.status, 401);
   assert.equal(removed.headers.get("set-cookie"), null);
+  assert.equal((await call("wallet/balance")).status, 401);
   const account = privateKeyToAccount(generatePrivateKey());
   const challenge = await (
     await call("auth/nonce", { wallet: account.address })
@@ -70,6 +71,55 @@ test("wallet authentication works and removed synthetic endpoints cannot create 
   });
   assert.equal(signedIn.status, 200);
   const cookie = signedIn.headers.get("set-cookie")!.split(";")[0];
+  const originalFetch = globalThis.fetch;
+  const requests: any[] = [];
+  globalThis.fetch = async (_input, init) => {
+    const request = JSON.parse(
+      init?.body ? String(init.body) : await (_input as Request).text(),
+    );
+    requests.push(request);
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: request.id,
+        result:
+          request.method === "eth_chainId"
+            ? "0x7c6"
+            : `0x${1000001n.toString(16).padStart(64, "0")}`,
+      }),
+    );
+  };
+  try {
+    const response = await call(
+      "wallet/balance?wallet=ignored",
+      undefined,
+      cookie,
+    );
+    assert.equal(response.status, 200);
+    const balance = await response.json();
+    assert.equal(balance.wallet, account.address.toLowerCase());
+    assert.equal(balance.formatted, "1.000001");
+    assert.equal(balance.baseUnits, "1000001");
+    assert.equal(balance.chainId, 1990);
+    const read = requests.find((r) => r.method === "eth_call");
+    assert.equal(
+      read.params[0].to.toLowerCase(),
+      "0x3f43da82ec9a4f5285f10faf1f26eca7319e5da5",
+    );
+    assert.ok(
+      read.params[0].data
+        .toLowerCase()
+        .endsWith(account.address.slice(2).toLowerCase()),
+    );
+    globalThis.fetch = async () => {
+      throw new Error("RPC offline");
+    };
+    const unavailable = await call("wallet/balance", undefined, cookie);
+    assert.equal(unavailable.status, 503);
+    assert.equal("baseUnits" in (await unavailable.json()), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
   assert.equal(
     (await (await call("auth/session", undefined, cookie)).json()).wallet,
     account.address.toLowerCase(),

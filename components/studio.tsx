@@ -58,12 +58,19 @@ type Session = {
   workspaceId?: string;
   admin?: boolean;
 };
+type WalletBalance = {
+  wallet: string;
+  formatted?: string;
+  status: "ready" | "unavailable";
+};
 const SessionContext = createContext<{
   session: Session;
+  balance: WalletBalance | null;
   refresh: () => Promise<void>;
   connect: () => void;
 }>({
   session: { authenticated: false, mode: "live" },
+  balance: null,
   refresh: async () => {},
   connect: () => {},
 });
@@ -114,6 +121,7 @@ export function Logo() {
   );
 }
 export function Providers({ children }: { children: ReactNode }) {
+  const [balance, setBalance] = useState<WalletBalance | null>(null);
   const [session, setSession] = useState<Session>({
       authenticated: false,
       mode: "live",
@@ -129,6 +137,50 @@ export function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh().catch(() => {});
   }, []);
+  const balanceWallet = session.authenticated ? session.wallet : undefined;
+  useEffect(() => {
+    if (!balanceWallet) return;
+    const controller = new AbortController();
+    let pending = false;
+    async function updateBalance() {
+      if (pending || document.visibilityState === "hidden") return;
+      pending = true;
+      try {
+        const response = await fetch("/api/wallet/balance", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Balance unavailable");
+        const result = await response.json();
+        if (
+          result.wallet?.toLowerCase() !== balanceWallet!.toLowerCase() ||
+          typeof result.formatted !== "string"
+        )
+          throw new Error("Balance account changed");
+        if (!controller.signal.aborted)
+          setBalance({
+            wallet: balanceWallet!,
+            formatted: result.formatted,
+            status: "ready",
+          });
+      } catch {
+        if (!controller.signal.aborted)
+          setBalance({ wallet: balanceWallet!, status: "unavailable" });
+      } finally {
+        pending = false;
+      }
+    }
+    void updateBalance();
+    const timer = window.setInterval(updateBalance, 30_000);
+    window.addEventListener("focus", updateBalance);
+    document.addEventListener("visibilitychange", updateBalance);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", updateBalance);
+      document.removeEventListener("visibilitychange", updateBalance);
+    };
+  }, [balanceWallet]);
   async function wallet() {
     if (busy) return;
     setBusy(true);
@@ -171,6 +223,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <SessionContext.Provider
       value={{
         session,
+        balance: balance?.wallet === balanceWallet ? balance : null,
         refresh,
         connect: () => {
           setModal(true);
@@ -236,7 +289,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 }
 export function WalletButton() {
-  const { session, connect, refresh } = useSession();
+  const { session, balance, connect, refresh } = useSession();
   const [open, setOpen] = useState(false);
   if (!session.authenticated)
     return (
@@ -249,6 +302,7 @@ export function WalletButton() {
     <div className="account">
       <button
         className="button light wallet-button"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
         <span className="avatar">{"W"}</span>
@@ -257,10 +311,22 @@ export function WalletButton() {
             ? `${session.wallet.slice(0, 6)}…${session.wallet.slice(-4)}`
             : "Wallet account"}
         </span>
+        <span
+          className="wallet-balance"
+          title="QUSDC balance on QIE Mainnet · refreshes every 30 seconds"
+          role="status"
+        >
+          {balance?.status === "ready"
+            ? `${balance.formatted} QUSDC`
+            : balance?.status === "unavailable"
+              ? "Balance unavailable"
+              : "Loading balance…"}
+        </span>
       </button>
       {open ? (
         <div className="account-menu">
           <p>{"Wallet authenticated"}</p>
+          <p>QIE Mainnet · QUSDC</p>
           <button
             onClick={async () => {
               await api("auth/logout", {});

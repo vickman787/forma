@@ -3075,6 +3075,30 @@ label > small,
 }
 .wallet-button {
   font-size: 13px;
+  flex-wrap: wrap;
+}
+.wallet-balance {
+  border-left: 1px solid currentColor;
+  padding-left: 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  max-width: 210px;
+}
+@media (max-width: 600px) {
+  .wallet-button:has(.wallet-balance) {
+    gap: 4px 7px;
+    max-width: 205px;
+  }
+  .wallet-button:has(.wallet-balance) .avatar {
+    display: none;
+  }
+  .wallet-balance {
+    flex-basis: 100%;
+    border-left: 0;
+    padding-left: 0;
+    font-size: 11px;
+  }
 }
 .mobile-work-nav a {
   font-size: 13px;

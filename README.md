@@ -58,7 +58,7 @@ The first release has a defined scope: no multi-page website, ecommerce backend,
 
 ## How a project works
 
-1. **Connect and sign in.** Connect an Ethereum-compatible browser wallet. Forma checks the QIE network and requests a domain-bound Sign-In with Ethereum message. Signing in is free and does not authorize a token transfer.
+1. **Connect and sign in.** Connect an Ethereum-compatible browser wallet. Forma checks the QIE network and requests a domain-bound Sign-In with Ethereum message. Signing in is free and does not authorize a token transfer. The signed-in wallet's QIE Mainnet QUSDC balance appears beside its address, refreshes every 30 seconds and on returning to the app, and shows an unavailable state if the network read fails.
 2. **Prepare the brief.** Choose a service, enter the real business details, and upload only approved assets. A reusable brand kit can save shared details for later projects. Browser drafts help retain unfinished input; wallet-owned records require sign-in.
 3. **Review the scope and price.** Confirm the brief, listed deliverables, and payment terms. Forma creates a fixed quote and freezes the approved information for that order.
 4. **Register and fund.** The bounded operator registers the job on-chain. The customer approves the exact QUSDC allowance when needed, then confirms funding in their own wallet. Registration must be confirmed before funding can proceed.
@@ -251,7 +251,7 @@ npm run test:contracts
 npm run test:http
 ```
 
-The latest regression run on November 25, 2026 passed **65 tests with zero failures**. Tests use isolated databases, mocked provider/RPC traffic, and a local EVM; they do not spend QUSDC, call paid AI services, or sign mainnet transactions. Test-only helpers are excluded from the production image.
+The latest regression run on November 25, 2026 passed **67 tests with zero failures**. Tests use isolated databases, mocked provider/RPC traffic, and a local EVM; they do not spend QUSDC, call paid AI services, or sign mainnet transactions. Test-only helpers are excluded from the production image.
 
 | Area                   | Covered behavior                                                                                                                                                    |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
