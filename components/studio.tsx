@@ -27,6 +27,7 @@ import {
   ArrowDownToLine,
 } from "lucide-react";
 import { services, type ServiceId } from "@/lib/domain";
+import { customerStatusText } from "@/lib/text";
 export async function api<T = any>(
   url: string,
   body?: unknown,
@@ -375,7 +376,7 @@ export function Workspace({
 export function ErrorMessage({ error }: { error?: string }) {
   return error ? (
     <div className="error-message" role="alert">
-      {error}
+      {customerStatusText(error)}
     </div>
   ) : null;
 }

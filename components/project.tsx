@@ -36,6 +36,7 @@ import {
 } from "./studio";
 import { getService, terms, type Order } from "@/lib/domain";
 import { qieChain } from "@/lib/chain";
+import { customerStatusText } from "@/lib/text";
 const date = (value: string | null) =>
   value
     ? new Date(value).toLocaleString(undefined, {
@@ -676,7 +677,7 @@ export function Project({
                     </h2>
                     <p>
                       {order.work === "failed"
-                        ? order.error
+                        ? customerStatusText(order.error)
                         : "Your actual preview will appear after rendering and quality checks."}
                     </p>
                   </div>
@@ -902,7 +903,7 @@ export function Project({
                             </strong>
                             {ev ? (
                               <>
-                                <p>{ev.message}</p>
+                                <p>{customerStatusText(ev.message)}</p>
                                 <small>{date(ev.created_at)}</small>
                               </>
                             ) : (

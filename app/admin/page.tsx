@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, Workspace, ErrorMessage, useSession } from "@/components/studio";
+import { customerStatusText } from "@/lib/text";
 export default function Page() {
   const { session } = useSession(),
     [data, setData] = useState<any>(null),
@@ -85,7 +86,8 @@ export default function Page() {
               )
               .map((task: any) => (
                 <p className="field-error" key={task.id}>
-                  {task.action} · {task.order_id}: {task.error}
+                  {task.action} · {task.order_id}:{" "}
+                  {customerStatusText(task.error)}
                 </p>
               ))}
           </section>
@@ -192,7 +194,9 @@ export default function Page() {
                 <p>
                   {j.status} / {j.stage} · attempts {j.attempts}
                 </p>
-                {j.error ? <p className="field-error">{j.error}</p> : null}
+                {j.error ? (
+                  <p className="field-error">{customerStatusText(j.error)}</p>
+                ) : null}
                 <pre>{j.usage || "No paid provider usage recorded."}</pre>
               </div>
             ))}

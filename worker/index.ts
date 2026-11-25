@@ -114,7 +114,7 @@ export async function runOne() {
           "Saved AI response is missing; no new paid request was made.",
         );
       prepareProviderRequest(o.brief);
-      await save("generate", "Generating bounded content with OpenAI.");
+      await save("generate", "Generating content from your approved brief.");
       await db.query(
         "UPDATE jobs SET provider_started=1 WHERE id=$1 AND lease_token=$2",
         [job.id, lease],

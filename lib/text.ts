@@ -1,3 +1,8 @@
+/** Keep historical system status/error text consistent with Forma's UI copy. */
+export function customerStatusText(message: string | null | undefined) {
+  return (message || "").replace(/\bOpenAI\b/gi, "AI service");
+}
+
 export function wrapText(s: string, max = 28) {
   const result: string[] = [];
   let line = "";
