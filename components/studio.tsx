@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { services, type ServiceId } from "@/lib/domain";
 import { customerStatusText } from "@/lib/text";
+import { ensureQieNetwork } from "@/lib/wallet-network";
 export async function api<T = any>(
   url: string,
   body?: unknown,
@@ -119,6 +120,7 @@ export function Providers({ children }: { children: ReactNode }) {
     }),
     [modal, setModal] = useState(false),
     [busy, setBusy] = useState(false),
+    [walletStep, setWalletStep] = useState(""),
     [error, setError] = useState("");
   const refresh = async () => {
     const s = await api<Session>("auth/session");
@@ -128,7 +130,9 @@ export function Providers({ children }: { children: ReactNode }) {
     void refresh().catch(() => {});
   }, []);
   async function wallet() {
+    if (busy) return;
     setBusy(true);
+    setWalletStep("Connecting wallet…");
     setError("");
     try {
       if (!window.ethereum)
@@ -138,16 +142,27 @@ export function Providers({ children }: { children: ReactNode }) {
       const [address] = await window.ethereum.request({
         method: "eth_requestAccounts",
       });
+      if (!address) throw new Error("Choose a wallet account to sign in.");
+      setWalletStep("Confirm QIE Mainnet in your wallet…");
+      await ensureQieNetwork(window.ethereum);
       const challenge = await api("auth/nonce", { wallet: address });
+      setWalletStep("Review the sign-in message in your wallet…");
       const signature = await window.ethereum.request({
         method: "personal_sign",
         params: [stringToHex(challenge.message), address],
       });
+      setWalletStep("Verifying your signature…");
       await api("auth/verify", { nonce: challenge.nonce, signature });
       await refresh();
       setModal(false);
     } catch (e) {
-      setError((e as Error).message);
+      setError(
+        Number((e as any)?.code) === -32002
+          ? "A wallet request is already open. Finish or cancel it in your wallet, then try again."
+          : Number((e as any)?.code) === 4001
+            ? "Wallet request cancelled. You can try signing in again."
+            : (e as Error).message,
+      );
     } finally {
       setBusy(false);
     }
@@ -184,6 +199,7 @@ export function Providers({ children }: { children: ReactNode }) {
               autoFocus
               className="icon-button close"
               aria-label="Close sign-in"
+              disabled={busy}
               onClick={() => setModal(false)}
             >
               <X size={22} />
@@ -201,8 +217,14 @@ export function Providers({ children }: { children: ReactNode }) {
               disabled={busy}
               onClick={wallet}
             >
-              {busy ? "Connecting…" : "Connect & sign in with wallet"}
+              {busy ? walletStep : "Connect & sign in with wallet"}
             </button>
+            {busy ? (
+              <p className="fine" role="status" aria-live="polite">
+                {walletStep} If the wallet window stays blank, cancel that
+                request in your wallet, reopen the extension, and try again.
+              </p>
+            ) : null}
             <p className="fine">
               <ShieldCheck size={15} /> Signing in does not request a
               transaction.

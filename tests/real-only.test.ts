@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { parseSiweMessage } from "viem/siwe";
 import { config } from "../lib/config";
 import { GET, POST } from "../app/api/[...path]/route";
 
@@ -53,6 +54,15 @@ test("wallet authentication works and removed synthetic endpoints cannot create 
   const challenge = await (
     await call("auth/nonce", { wallet: account.address })
   ).json();
+  const parsed = parseSiweMessage(challenge.message);
+  assert.equal(parsed.domain, "127.0.0.1:3000");
+  assert.equal(parsed.uri, "http://127.0.0.1:3000");
+  assert.equal(parsed.chainId, 1990);
+  assert.equal(parsed.nonce, challenge.nonce);
+  assert.equal(parsed.address?.toLowerCase(), account.address.toLowerCase());
+  assert.ok(
+    parsed.expirationTime && parsed.expirationTime.getTime() > Date.now(),
+  );
   const signature = await account.signMessage({ message: challenge.message });
   const signedIn = await call("auth/verify", {
     nonce: challenge.nonce,

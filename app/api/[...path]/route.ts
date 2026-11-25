@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { verifyMessage, isAddress, getAddress } from "viem";
+import { createSiweMessage } from "viem/siwe";
 import { z } from "zod";
 import { config } from "@/lib/config";
 import {
@@ -126,7 +127,18 @@ async function handler(
         expires = after(5 * 60000),
         address = getAddress(wallet),
         domain = new URL(c.appUrl).host;
-      const message = `${domain} wants you to sign in to Forma with your Ethereum account:\n${address}\n\nSign in to your private business studio. No transaction is requested.\n\nURI: ${c.appUrl}\nVersion: 1\nChain ID: 1990\nNonce: ${id}\nIssued At: ${now()}\nExpiration Time: ${expires}`;
+      const message = createSiweMessage({
+        address,
+        domain,
+        uri: c.appUrl,
+        version: "1",
+        chainId: 1990,
+        nonce: id,
+        issuedAt: new Date(),
+        expirationTime: new Date(expires),
+        statement:
+          "Sign in to your private Forma studio. No transaction or payment is requested.",
+      });
       await (
         await database()
       ).query(
